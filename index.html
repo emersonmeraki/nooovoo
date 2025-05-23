@@ -232,15 +232,19 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Configuração do Firebase (será fornecida pelo ambiente Canvas)
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-      apiKey: "YOUR_FALLBACK_API_KEY", // Fallback se não estiver no Canvas
-      authDomain: "YOUR_FALLBACK_AUTH_DOMAIN",
-      projectId: "YOUR_FALLBACK_PROJECT_ID",
-      storageBucket: "YOUR_FALLBACK_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_FALLBACK_SENDER_ID",
-      appId: "YOUR_FALLBACK_APP_ID"
+    // Configuração do Firebase
+    // Prioridade 1: Configuração injetada pelo ambiente Canvas (__firebase_config)
+    // Prioridade 2 (Fallback): Configuração original do seu arquivo index.html
+    const originalUserFirebaseConfig = {
+      apiKey: "AIzaSyDDHFOfzNK5yhp_3JK4Ez-WTJnBUfyZEzw", // Chave do seu index.html original
+      authDomain: "meu-app-7cadd.firebaseapp.com", // Chave do seu index.html original
+      projectId: "meu-app-7cadd", // Chave do seu index.html original
+      storageBucket: "meu-app-7cadd.firebasestorage.app", // Chave do seu index.html original
+      messagingSenderId: "945940938596", // Chave do seu index.html original
+      appId: "1:945940938596:web:2bdbd23bcffbba35b74471" // Chave do seu index.html original
     };
+
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : originalUserFirebaseConfig;
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -783,18 +787,22 @@
                 // onAuthStateChanged vai lidar com isso
             }
             else {
-                console.log("Nenhum token customizado, abrindo modal de login/registro.");
+                console.log("Nenhum token customizado ou usuário logado, verificando configuração de fallback.");
                 // Se não houver token e nenhum usuário logado, onAuthStateChanged(auth, user => { if (!user) openAuthModal() }) tratará disso
-                openAuthModal(); // Força abertura se não houver usuário na carga inicial e nenhum token
+                // A decisão de abrir o modal de login agora é puramente do onAuthStateChanged
             }
         } catch (error) {
             console.error("Erro na autenticação inicial:", error);
-            showGenericModal("Erro de Autenticação", `Falha na autenticação inicial: ${error.message}`);
-            openAuthModal(); // Garante que o modal de login apareça em caso de erro com token
+            // Não mostre modal genérico aqui, pois onAuthStateChanged vai abrir o authModal se necessário.
+            // Apenas logue o erro. O fluxo de UI será gerenciado por onAuthStateChanged.
+        }
+        // Garante que o modal de autenticação seja aberto se não houver usuário após a verificação inicial.
+        // Isso é um seguro caso o onAuthStateChanged demore ou não dispare imediatamente sem um login/logout explícito.
+        if (!auth.currentUser && (typeof __initial_auth_token === 'undefined' || !__initial_auth_token) ) {
+            openAuthModal();
         }
     })();
 
   </script>
 </body>
 </html>
-
