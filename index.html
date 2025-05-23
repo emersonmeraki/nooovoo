@@ -3,155 +3,798 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YT Upload Manager</title>
+  <title>YT Upload Manager Avançado</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; background-color: #f2f2f2; margin: 0; padding: 0; }
-    .container { max-width: 1000px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
-    h1 { text-align: center; margin-bottom: 20px; }
-    .auth-section { text-align: center; margin-bottom: 20px; }
-    .auth-section input { padding: 10px; width: 250px; margin: 5px; border: 1px solid #ccc; border-radius: 6px; }
-    .auth-section button { padding: 10px 15px; margin: 5px; background: #00796b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    .auth-section button:hover { background: #004d40; }
-    .stats { display: flex; justify-content: space-around; flex-wrap: wrap; margin-bottom: 20px; }
-    .stat { background: #e0f7fa; padding: 10px 20px; margin: 10px; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px; border: 1px solid #ccc; text-align: center; }
-    th { background: #00796b; color: white; }
-    .actions { text-align: right; margin-top: 20px; }
-    .actions button { padding: 10px 15px; background: #00796b; color: white; border: none; border-radius: 6px; cursor: pointer; }
-    .actions button:hover { background: #004d40; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6; /* Tailwind gray-100 */
+    }
+    .modal {
+      display: none; /* Hidden by default */
+      position: fixed; /* Stay in place */
+      z-index: 100; /* Sit on top */
+      left: 0;
+      top: 0;
+      width: 100%; /* Full width */
+      height: 100%; /* Full height */
+      overflow: auto; /* Enable scroll if needed */
+      background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+      backdrop-filter: blur(5px);
+    }
+    .modal-content {
+      background-color: #ffffff;
+      margin: 10% auto; /* 10% from the top and centered */
+      padding: 24px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+      position: relative;
+    }
+    .close-button {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      position: absolute;
+      top: 10px;
+      right: 20px;
+    }
+    .close-button:hover,
+    .close-button:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .tab-button {
+      padding: 0.5rem 1rem;
+      margin-right: 0.5rem;
+      border-radius: 0.375rem; /* rounded-md */
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .tab-button.active {
+      background-color: #3b82f6; /* bg-blue-500 */
+      color: white;
+    }
+    .tab-button:not(.active) {
+      background-color: #e5e7eb; /* bg-gray-200 */
+    }
+    .prompt-card {
+        background-color: #f9fafb; /* gray-50 */
+        border: 1px solid #e5e7eb; /* gray-200 */
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    /* Custom scrollbar for channel list if it gets too long */
+    .channel-list-container {
+        max-height: 60vh; /* Adjust as needed */
+        overflow-y: auto;
+    }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>YT Upload – Painel de Gerenciamento</h1>
-    <div class="auth-section">
-      <input type="email" id="email" placeholder="Seu e-mail" />
-      <input type="password" id="senha" placeholder="Sua senha" /><br />
-      <button onclick="registrar()">Criar conta</button>
-      <button onclick="logar()">Fazer login</button>
-      <button onclick="sair()">Sair</button>
-    </div>
-    <div id="userArea" style="display:none;">
-      <div class="stats" id="summary"></div>
-      <table id="channelTable"><thead><tr>
-        <th>Canal</th><th>Vídeos Disponíveis</th><th>Agendados</th><th>Postados</th><th>Monetizado?</th>
-      </tr></thead><tbody></tbody></table>
-      <div class="actions"><button onclick="addChannel()">Adicionar Canal</button></div>
+<body class="bg-gray-100 text-gray-800">
+
+  <div id="genericModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="closeGenericModal()">&times;</span>
+      <h3 id="genericModalTitle" class="text-xl font-semibold mb-4"></h3>
+      <p id="genericModalMessage" class="mb-6"></p>
+      <div id="genericModalActions" class="flex justify-end space-x-3">
+        <button id="genericModalOkButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg" onclick="closeGenericModal()">OK</button>
+        <button id="genericModalCancelButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg" style="display:none;" onclick="closeGenericModal()">Cancelar</button>
+      </div>
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+  <div id="authModal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-end">
+          <span class="close-button" onclick="closeAuthModal()">&times;</span>
+      </div>
+      <div id="authTabs" class="mb-6 border-b border-gray-200">
+        <button id="loginTabButton" class="tab-button active" onclick="showAuthTab('loginForm')">Login</button>
+        <button id="registerTabButton" class="tab-button" onclick="showAuthTab('registerForm')">Criar Conta</button>
+      </div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDDHFOfzNK5yhp_3JK4Ez-WTJnBUfyZEzw",
-      authDomain: "meu-app-7cadd.firebaseapp.com",
-      projectId: "meu-app-7cadd",
-      storageBucket: "meu-app-7cadd.firebasestorage.app",
-      messagingSenderId: "945940938596",
-      appId: "1:945940938596:web:2bdbd23bcffbba35b74471"
+      <div id="loginForm">
+        <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Entrar na sua Conta</h2>
+        <input type="email" id="loginEmail" placeholder="Seu e-mail" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+        <input type="password" id="loginPassword" placeholder="Sua senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+        <button onclick="handleLogin()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-150 ease-in-out">
+          <i class="fas fa-sign-in-alt mr-2"></i>Entrar
+        </button>
+      </div>
+
+      <div id="registerForm" style="display:none;">
+        <h2 class="text-2xl font-bold mb-6 text-center text-green-600">Criar Nova Conta</h2>
+        <input type="email" id="registerEmail" placeholder="Seu e-mail" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+        <input type="password" id="registerPassword" placeholder="Sua senha" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+        <input type="password" id="registerConfirmPassword" placeholder="Confirme sua senha" class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+        <button onclick="handleRegister()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-150 ease-in-out">
+          <i class="fas fa-user-plus mr-2"></i>Criar Conta
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="channelModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="closeChannelModal()">&times;</span>
+      <h3 id="channelModalTitle" class="text-xl font-semibold mb-6">Adicionar Novo Canal</h3>
+      <input type="hidden" id="editingChannelId">
+      <div>
+        <label for="channelName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Canal:</label>
+        <input type="text" id="channelName" placeholder="Ex: Canal de Culinária" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label for="channelScheduleType" class="block text-sm font-medium text-gray-700 mb-1">Frequência de Postagem:</label>
+        <select id="channelScheduleType" class="w-full p-3 mb-4 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500">
+          <option value="daily">Diariamente</option>
+          <option value="alternate">Dia sim, dia não</option>
+          <option value="weekly">Semanalmente (especificar dia)</option>
+          </select>
+      </div>
+      <div class="flex items-center mb-6">
+        <input type="checkbox" id="channelMonetized" class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mr-2" />
+        <label for="channelMonetized" class="text-sm font-medium text-gray-700">Canal Monetizado?</label>
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button onclick="closeChannelModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+        <button onclick="saveChannel()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg">
+            <i class="fas fa-save mr-2"></i>Salvar Canal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="promptModal" class="modal">
+      <div class="modal-content">
+          <span class="close-button" onclick="closePromptModal()">&times;</span>
+          <h3 id="promptModalTitle" class="text-xl font-semibold mb-6">Adicionar Prompt</h3>
+          <input type="hidden" id="editingPromptChannelId">
+          <input type="hidden" id="editingPromptIndex">
+          <div>
+              <label for="promptName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Prompt:</label>
+              <input type="text" id="promptName" placeholder="Ex: Roteiro Vídeo Review" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+          </div>
+          <div>
+              <label for="promptText" class="block text-sm font-medium text-gray-700 mb-1">Texto do Prompt (Comando):</label>
+              <textarea id="promptText" rows="5" placeholder="Cole aqui seu prompt detalhado..." class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"></textarea>
+          </div>
+          <div class="flex justify-end space-x-3">
+              <button onclick="closePromptModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+              <button onclick="savePrompt()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
+                  <i class="fas fa-save mr-2"></i>Salvar Prompt
+              </button>
+          </div>
+      </div>
+  </div>
+
+  <div id="viewPromptModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeViewPromptModal()">&times;</span>
+            <h3 id="viewPromptName" class="text-xl font-semibold mb-4">Nome do Prompt</h3>
+            <div class="bg-gray-100 p-4 rounded-lg mb-4 max-h-60 overflow-y-auto">
+                <pre id="viewPromptText" class="whitespace-pre-wrap text-sm"></pre>
+            </div>
+            <div class="flex justify-end">
+                <button onclick="copyPromptText()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">
+                    <i class="fas fa-copy mr-2"></i>Copiar Prompt
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+  <div id="appContainer" class="container mx-auto p-4 md:p-8" style="display:none;">
+    <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-300">
+      <h1 class="text-3xl md:text-4xl font-bold text-indigo-700">
+        <i class="fab fa-youtube mr-2 text-red-500"></i>YT Upload Manager
+      </h1>
+      <div id="userInfo" class="text-right">
+        <p id="userEmailDisplay" class="text-sm text-gray-600"></p>
+        <p id="userIdDisplay" class="text-xs text-gray-500"></p>
+        <button onclick="handleLogout()" class="mt-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 ease-in-out">
+          <i class="fas fa-sign-out-alt mr-1"></i>Sair
+        </button>
+        </div>
+    </header>
+
+    <div id="summarySection" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+      </div>
+
+    <div class="bg-white p-6 rounded-xl shadow-lg">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-semibold text-gray-700">Meus Canais</h2>
+        <button onclick="openChannelModal(null)" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+          <i class="fas fa-plus-circle mr-2"></i>Adicionar Canal
+        </button>
+      </div>
+      <div id="channelListContainer" class="channel-list-container space-y-6">
+        <p id="noChannelsMessage" class="text-center text-gray-500 py-8" style="display:none;">
+            Você ainda não adicionou nenhum canal. <br/>Clique em "Adicionar Canal" para começar!
+        </p>
+      </div>
+    </div>
+  </div>
+
+
+  <script type="module">
+    // Importações do Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Configuração do Firebase (será fornecida pelo ambiente Canvas)
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+      apiKey: "YOUR_FALLBACK_API_KEY", // Fallback se não estiver no Canvas
+      authDomain: "YOUR_FALLBACK_AUTH_DOMAIN",
+      projectId: "YOUR_FALLBACK_PROJECT_ID",
+      storageBucket: "YOUR_FALLBACK_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_FALLBACK_SENDER_ID",
+      appId: "YOUR_FALLBACK_APP_ID"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    setLogLevel('debug'); // Para logs detalhados do Firestore no console
 
-    let userId = null;
-    let channels = [];
+    // Variáveis globais da aplicação
+    let currentUserId = null;
+    let channelsData = []; // Armazenará os canais do usuário
+    let unsubscribeChannels = null; // Para o listener do Firestore
 
-    window.registrar = async function () {
-      const email = document.getElementById("email").value;
-      const senha = document.getElementById("senha").value;
-      try {
-        await createUserWithEmailAndPassword(auth, email, senha);
-        alert("Conta criada com sucesso!");
-      } catch (err) {
-        alert("Erro ao registrar: " + err.message);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+    // Elementos da UI
+    const authModal = document.getElementById('authModal');
+    const appContainer = document.getElementById('appContainer');
+    const loginEmailInput = document.getElementById('loginEmail');
+    const loginPasswordInput = document.getElementById('loginPassword');
+    const registerEmailInput = document.getElementById('registerEmail');
+    const registerPasswordInput = document.getElementById('registerPassword');
+    const registerConfirmPasswordInput = document.getElementById('registerConfirmPassword');
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+    const userIdDisplay = document.getElementById('userIdDisplay');
+    const channelListContainer = document.getElementById('channelListContainer');
+    const noChannelsMessage = document.getElementById('noChannelsMessage');
+
+    // Elementos do Modal Genérico
+    const genericModal = document.getElementById('genericModal');
+    const genericModalTitle = document.getElementById('genericModalTitle');
+    const genericModalMessage = document.getElementById('genericModalMessage');
+    const genericModalOkButton = document.getElementById('genericModalOkButton');
+    const genericModalCancelButton = document.getElementById('genericModalCancelButton');
+    let genericModalConfirmCallback = null;
+
+    // Funções do Modal Genérico
+    function showGenericModal(title, message, type = 'alert', confirmCallback = null) {
+        genericModalTitle.textContent = title;
+        genericModalMessage.innerHTML = message; // Usar innerHTML para permitir tags <br>
+        genericModalConfirmCallback = confirmCallback;
+
+        if (type === 'confirm') {
+            genericModalOkButton.textContent = 'Confirmar';
+            genericModalCancelButton.style.display = 'inline-block';
+        } else { // alert
+            genericModalOkButton.textContent = 'OK';
+            genericModalCancelButton.style.display = 'none';
+        }
+        genericModal.style.display = 'flex';
+    }
+
+    window.closeGenericModal = function(confirmed = false) {
+        genericModal.style.display = 'none';
+        if (genericModalConfirmCallback && confirmed) {
+            genericModalConfirmCallback();
+        }
+        genericModalConfirmCallback = null; // Reset callback
+    }
+    // Adicionar listener para o botão OK do modal genérico
+    genericModalOkButton.onclick = () => closeGenericModal(true);
+    // Adicionar listener para o botão Cancelar do modal genérico
+    genericModalCancelButton.onclick = () => closeGenericModal(false);
+
+
+    // Funções de Autenticação
+    window.showAuthTab = (tabId) => {
+        document.getElementById('loginForm').style.display = tabId === 'loginForm' ? 'block' : 'none';
+        document.getElementById('registerForm').style.display = tabId === 'registerForm' ? 'block' : 'none';
+        document.getElementById('loginTabButton').classList.toggle('active', tabId === 'loginForm');
+        document.getElementById('registerTabButton').classList.toggle('active', tabId === 'registerForm');
+    }
+
+    window.openAuthModal = () => {
+        showAuthTab('loginForm'); // Default to login
+        authModal.style.display = 'flex';
+    }
+    window.closeAuthModal = () => {
+        authModal.style.display = 'none';
+        // Limpar campos
+        loginEmailInput.value = '';
+        loginPasswordInput.value = '';
+        registerEmailInput.value = '';
+        registerPasswordInput.value = '';
+        registerConfirmPasswordInput.value = '';
+    }
+
+    window.handleLogin = async () => {
+      const email = loginEmailInput.value;
+      const password = loginPasswordInput.value;
+      if (!email || !password) {
+        showGenericModal("Erro de Login", "Por favor, preencha e-mail e senha.");
+        return;
       }
-    }
-
-    window.logar = async function () {
-      const email = document.getElementById("email").value;
-      const senha = document.getElementById("senha").value;
       try {
-        await signInWithEmailAndPassword(auth, email, senha);
-        console.log("Login feito com sucesso.");
-      } catch (err) {
-        alert("Erro ao fazer login: " + err.message);
+        await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged cuidará de fechar o modal e mostrar o app
+      } catch (error) {
+        console.error("Erro ao fazer login:", error);
+        showGenericModal("Erro de Login", `Não foi possível fazer login. Verifique suas credenciais.<br><small>Detalhe: ${error.message}</small>`);
       }
-    }
+    };
 
-    window.sair = function () {
-      signOut(auth);
-    }
+    window.handleRegister = async () => {
+      const email = registerEmailInput.value;
+      const password = registerPasswordInput.value;
+      const confirmPassword = registerConfirmPasswordInput.value;
 
+      if (!email || !password || !confirmPassword) {
+        showGenericModal("Erro de Registro", "Por favor, preencha todos os campos.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        showGenericModal("Erro de Registro", "As senhas não coincidem.");
+        return;
+      }
+      if (password.length < 6) {
+        showGenericModal("Erro de Registro", "A senha deve ter pelo menos 6 caracteres.");
+        return;
+      }
+
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged cuidará de fechar o modal e mostrar o app
+        // Poderia mostrar uma mensagem de sucesso aqui antes do onAuthStateChanged agir
+        showGenericModal("Sucesso!", "Conta criada com sucesso! Você será logado automaticamente.");
+      } catch (error) {
+        console.error("Erro ao registrar:", error);
+        showGenericModal("Erro de Registro", `Não foi possível criar a conta.<br><small>Detalhe: ${error.message}</small>`);
+      }
+    };
+
+    window.handleLogout = async () => {
+      try {
+        await signOut(auth);
+        // onAuthStateChanged cuidará de mostrar o modal de login
+      } catch (error) {
+        console.error("Erro ao sair:", error);
+        showGenericModal("Erro", "Ocorreu um erro ao tentar sair.");
+      }
+    };
+
+    // Listener de Estado de Autenticação
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        userId = user.uid;
-        document.getElementById("userArea").style.display = "block";
-        const ref = doc(db, "usuarios", userId);
-        const snapshot = await getDoc(ref);
-        channels = snapshot.exists() ? snapshot.data().channels || [] : [];
-        updateSummary();
-        renderTable();
+        currentUserId = user.uid;
+        userEmailDisplay.textContent = user.email || 'Usuário Anônimo';
+        userIdDisplay.textContent = `ID: ${currentUserId}`; // Mostrar ID do usuário
+        appContainer.style.display = 'block';
+        closeAuthModal();
+        loadChannels(); // Carregar dados do usuário
       } else {
-        document.getElementById("userArea").style.display = "none";
-        userId = null;
+        currentUserId = null;
+        if (unsubscribeChannels) unsubscribeChannels(); // Parar de ouvir dados antigos
+        channelsData = [];
+        renderChannels(); // Limpar a lista de canais
+        appContainer.style.display = 'none';
+        openAuthModal();
+        userEmailDisplay.textContent = '';
+        userIdDisplay.textContent = '';
       }
     });
 
-    function salvarDados() {
-      if (!userId) return;
-      setDoc(doc(db, "usuarios", userId), { channels });
+    // Funções de Gerenciamento de Dados (Firestore)
+    async function loadChannels() {
+        if (!currentUserId) return;
+        if (unsubscribeChannels) unsubscribeChannels(); // Limpa listener anterior
+
+        const userDocRef = doc(db, "artifacts", appId, "users", currentUserId, "appData", "main");
+
+        unsubscribeChannels = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                channelsData = data.channels || [];
+            } else {
+                // Documento não existe, pode ser a primeira vez do usuário
+                channelsData = [];
+                // Opcional: criar o documento se não existir
+                // await setDoc(userDocRef, { channels: [] });
+            }
+            renderChannels();
+            updateSummary();
+        }, (error) => {
+            console.error("Erro ao carregar canais:", error);
+            showGenericModal("Erro de Dados", "Não foi possível carregar seus canais. Tente recarregar a página.");
+        });
+    }
+
+    async function saveAllUserData() {
+        if (!currentUserId) {
+            showGenericModal("Erro", "Usuário não autenticado. Não é possível salvar.");
+            return;
+        }
+        try {
+            const userDocRef = doc(db, "artifacts", appId, "users", currentUserId, "appData", "main");
+            await setDoc(userDocRef, { channels: channelsData }, { merge: true }); // merge: true para não sobrescrever outros campos se houver
+            console.log("Dados salvos com sucesso!");
+        } catch (error) {
+            console.error("Erro ao salvar dados:", error);
+            showGenericModal("Erro ao Salvar", `Não foi possível salvar os dados.<br><small>${error.message}</small>`);
+        }
+    }
+
+
+    // Funções de Renderização da UI
+    function renderChannels() {
+        channelListContainer.innerHTML = ''; // Limpa a lista existente
+        if (channelsData.length === 0) {
+            noChannelsMessage.style.display = 'block';
+            return;
+        }
+        noChannelsMessage.style.display = 'none';
+
+        channelsData.forEach((channel, index) => {
+            const channelId = channel.id || `channel-${index}`; // Usa ID se existir, senão um fallback
+            const channelCard = document.createElement('div');
+            channelCard.className = 'bg-gray-50 p-5 rounded-lg shadow hover:shadow-md transition-shadow duration-150';
+            channelCard.innerHTML = `
+              <div class="flex justify-between items-start mb-3">
+                <div>
+                  <h3 class="text-xl font-semibold text-indigo-600">${channel.name}</h3>
+                  <p class="text-sm text-gray-500">Frequência: ${getScheduleDisplayName(channel.scheduleType)}</p>
+                  <p class="text-sm ${channel.monetized ? 'text-green-500' : 'text-red-500'}">
+                    ${channel.monetized ? '<i class="fas fa-check-circle"></i> Monetizado' : '<i class="fas fa-times-circle"></i> Não Monetizado'}
+                  </p>
+                  ${renderNextVideoInfo(channel)}
+                </div>
+                <div class="flex space-x-2">
+                    <button title="Editar Canal" onclick="openChannelModal('${channelId}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                    <button title="Excluir Canal" onclick="confirmDeleteChannel('${channelId}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="text-md font-semibold text-gray-700">Prompts de IA:</h4>
+                    <button onclick="openPromptModal('${channelId}', null)" class="bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold py-1 px-3 rounded-md text-sm">
+                        <i class="fas fa-plus mr-1"></i>Adicionar Prompt
+                    </button>
+                </div>
+                <div id="promptsList-${channelId}" class="space-y-2">
+                  ${renderPromptsForChannel(channel, channelId)}
+                </div>
+              </div>
+            `;
+            channelListContainer.appendChild(channelCard);
+        });
+    }
+
+    function getScheduleDisplayName(scheduleType) {
+        const names = {
+            'daily': 'Diariamente',
+            'alternate': 'Dia sim, dia não',
+            'weekly': 'Semanalmente'
+        };
+        return names[scheduleType] || 'Não definido';
+    }
+
+    function renderNextVideoInfo(channel) {
+        // Lógica simples para exemplo. Pode ser expandida.
+        let nextVideoText = "Próximo vídeo: ";
+        const today = new Date().getDay(); // 0 = Domingo, 1 = Segunda, ...
+
+        switch (channel.scheduleType) {
+            case 'daily':
+                nextVideoText += "Hoje";
+                break;
+            case 'alternate':
+                // Simplificado: assume que se hoje é par, amanhã é ímpar, etc.
+                // Uma lógica mais robusta usaria a data da última postagem.
+                const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+                nextVideoText += (dayOfYear % 2 === 0) ? "Hoje" : "Amanhã";
+                break;
+            case 'weekly':
+                // Precisaria de um campo 'scheduleDayOfWeek' no channel.
+                nextVideoText += "Verificar dia da semana";
+                break;
+            default:
+                return `<p class="text-xs text-gray-400 mt-1">Agendamento não definido.</p>`;
+        }
+        return `<p class="text-xs text-blue-500 mt-1"><i class="fas fa-calendar-alt mr-1"></i>${nextVideoText}</p>`;
+    }
+
+    function renderPromptsForChannel(channel, channelId) {
+        if (!channel.prompts || channel.prompts.length === 0) {
+            return '<p class="text-sm text-gray-400 italic">Nenhum prompt adicionado.</p>';
+        }
+        return channel.prompts.map((prompt, promptIndex) => `
+            <div class="prompt-card">
+                <span class="font-medium text-purple-700">${prompt.name}</span>
+                <div class="space-x-2">
+                    <button title="Ver/Copiar Prompt" onclick="openViewPromptModal('${channelId}', ${promptIndex})" class="text-green-500 hover:text-green-700"><i class="fas fa-eye"></i></button>
+                    <button title="Editar Prompt" onclick="openPromptModal('${channelId}', ${promptIndex})" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                    <button title="Excluir Prompt" onclick="confirmDeletePrompt('${channelId}', ${promptIndex})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `).join('');
     }
 
     function updateSummary() {
-      const total = channels.length;
-      const monetized = channels.filter(c => c.monetized).length;
-      const notMonetized = total - monetized;
-      const totalVideos = channels.reduce((acc, c) => acc + c.available + c.scheduled + c.posted, 0);
-      const available = channels.reduce((acc, c) => acc + c.available, 0);
-      const posted = channels.reduce((acc, c) => acc + c.posted, 0);
+        const totalChannels = channelsData.length;
+        const monetizedChannels = channelsData.filter(c => c.monetized).length;
+        const nonMonetizedChannels = totalChannels - monetizedChannels;
+        // Outras estatísticas podem ser adicionadas aqui (total de prompts, etc.)
 
-      document.getElementById("summary").innerHTML = `
-        <div class="stat">Total de Canais: <strong>${total}</strong></div>
-        <div class="stat">Canais Monetizados: <strong>${monetized}</strong></div>
-        <div class="stat">Canais Não Monetizados: <strong>${notMonetized}</strong></div>
-        <div class="stat">Total de Vídeos: <strong>${totalVideos}</strong></div>
-        <div class="stat">Vídeos Disponíveis: <strong>${available}</strong></div>
-        <div class="stat">Vídeos Postados: <strong>${posted}</strong></div>`;
+        const summarySection = document.getElementById('summarySection');
+        summarySection.innerHTML = `
+            <div class="bg-white p-4 rounded-lg shadow text-center">
+                <p class="text-3xl font-bold text-indigo-600">${totalChannels}</p>
+                <p class="text-sm text-gray-500">Canais Totais</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow text-center">
+                <p class="text-3xl font-bold text-green-500">${monetizedChannels}</p>
+                <p class="text-sm text-gray-500">Monetizados</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow text-center">
+                <p class="text-3xl font-bold text-red-500">${nonMonetizedChannels}</p>
+                <p class="text-sm text-gray-500">Não Monetizados</p>
+            </div>
+            `;
     }
 
-    function renderTable() {
-      const tbody = document.querySelector("#channelTable tbody");
-      tbody.innerHTML = "";
-      channels.forEach(channel => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${channel.name}</td>
-          <td>${channel.available}</td>
-          <td>${channel.scheduled}</td>
-          <td>${channel.posted}</td>
-          <td>${channel.monetized ? "✔️" : "❌"}</td>`;
-        tbody.appendChild(row);
-      });
+    // Funções do Modal de Canal
+    const channelModal = document.getElementById('channelModal');
+    const channelModalTitle = document.getElementById('channelModalTitle');
+    const editingChannelIdInput = document.getElementById('editingChannelId');
+    const channelNameInput = document.getElementById('channelName');
+    const channelScheduleTypeInput = document.getElementById('channelScheduleType');
+    const channelMonetizedInput = document.getElementById('channelMonetized');
+
+    window.openChannelModal = (channelIdToEdit) => {
+        editingChannelIdInput.value = channelIdToEdit || '';
+        if (channelIdToEdit) {
+            const channel = channelsData.find(c => (c.id || `channel-${channelsData.indexOf(c)}`) === channelIdToEdit);
+            if (channel) {
+                channelModalTitle.textContent = 'Editar Canal';
+                channelNameInput.value = channel.name;
+                channelScheduleTypeInput.value = channel.scheduleType || 'daily';
+                channelMonetizedInput.checked = channel.monetized || false;
+            } else {
+                showGenericModal("Erro", "Canal não encontrado para edição.");
+                return;
+            }
+        } else {
+            channelModalTitle.textContent = 'Adicionar Novo Canal';
+            channelNameInput.value = '';
+            channelScheduleTypeInput.value = 'daily';
+            channelMonetizedInput.checked = false;
+        }
+        channelModal.style.display = 'flex';
+    }
+    window.closeChannelModal = () => {
+        channelModal.style.display = 'none';
+    }
+    window.saveChannel = async () => {
+        const name = channelNameInput.value.trim();
+        const scheduleType = channelScheduleTypeInput.value;
+        const monetized = channelMonetizedInput.checked;
+        const editingId = editingChannelIdInput.value;
+
+        if (!name) {
+            showGenericModal("Erro", "O nome do canal é obrigatório.");
+            return;
+        }
+
+        if (editingId) { // Editando canal existente
+            const channelIndex = channelsData.findIndex(c => (c.id || `channel-${channelsData.indexOf(c)}`) === editingId);
+            if (channelIndex > -1) {
+                channelsData[channelIndex].name = name;
+                channelsData[channelIndex].scheduleType = scheduleType;
+                channelsData[channelIndex].monetized = monetized;
+                // Manter prompts existentes
+            }
+        } else { // Adicionando novo canal
+            const newChannel = {
+                id: `ch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // ID único
+                name,
+                scheduleType,
+                monetized,
+                prompts: [] // Inicializa array de prompts vazio
+            };
+            channelsData.push(newChannel);
+        }
+        await saveAllUserData();
+        // renderChannels() e updateSummary() serão chamados pelo listener onSnapshot
+        closeChannelModal();
     }
 
-    window.addChannel = function () {
-      const name = prompt("Nome do canal:");
-      if (!name) return;
-      const available = parseInt(prompt("Vídeos disponíveis:"), 10) || 0;
-      const scheduled = parseInt(prompt("Vídeos agendados:"), 10) || 0;
-      const posted = parseInt(prompt("Vídeos postados:"), 10) || 0;
-      const monetized = confirm("O canal é monetizado?");
-      channels.push({ name, available, scheduled, posted, monetized });
-      salvarDados();
-      updateSummary();
-      renderTable();
+    window.confirmDeleteChannel = (channelId) => {
+        showGenericModal(
+            "Confirmar Exclusão",
+            "Tem certeza que deseja excluir este canal e todos os seus prompts? Esta ação não pode ser desfeita.",
+            "confirm",
+            async () => {
+                channelsData = channelsData.filter(c => (c.id || `channel-${channelsData.indexOf(c)}`) !== channelId);
+                await saveAllUserData();
+                // renderChannels() e updateSummary() serão chamados pelo listener onSnapshot
+                showGenericModal("Canal Excluído", "O canal foi excluído com sucesso.");
+            }
+        );
     }
+
+
+    // Funções do Modal de Prompt
+    const promptModal = document.getElementById('promptModal');
+    const promptModalTitle = document.getElementById('promptModalTitle');
+    const editingPromptChannelIdInput = document.getElementById('editingPromptChannelId');
+    const editingPromptIndexInput = document.getElementById('editingPromptIndex');
+    const promptNameInput = document.getElementById('promptName');
+    const promptTextInput = document.getElementById('promptText');
+
+    window.openPromptModal = (channelId, promptIndexToEdit) => {
+        editingPromptChannelIdInput.value = channelId;
+        const channel = channelsData.find(c => (c.id || `channel-${channelsData.indexOf(c)}`) === channelId);
+        if (!channel) {
+            showGenericModal("Erro", "Canal não encontrado para adicionar/editar prompt.");
+            return;
+        }
+
+        if (promptIndexToEdit !== null && typeof promptIndexToEdit === 'number' && channel.prompts && channel.prompts[promptIndexToEdit]) {
+            const prompt = channel.prompts[promptIndexToEdit];
+            promptModalTitle.textContent = 'Editar Prompt';
+            editingPromptIndexInput.value = promptIndexToEdit;
+            promptNameInput.value = prompt.name;
+            promptTextInput.value = prompt.text;
+        } else {
+            promptModalTitle.textContent = 'Adicionar Novo Prompt';
+            editingPromptIndexInput.value = ''; // Indica novo prompt
+            promptNameInput.value = '';
+            promptTextInput.value = '';
+        }
+        promptModal.style.display = 'flex';
+    }
+
+    window.closePromptModal = () => {
+        promptModal.style.display = 'none';
+    }
+
+    window.savePrompt = async () => {
+        const channelId = editingPromptChannelIdInput.value;
+        const promptName = promptNameInput.value.trim();
+        const promptText = promptTextInput.value.trim();
+        const editingPromptIndex = editingPromptIndexInput.value !== '' ? parseInt(editingPromptIndexInput.value) : null;
+
+        if (!promptName || !promptText) {
+            showGenericModal("Erro", "O nome e o texto do prompt são obrigatórios.");
+            return;
+        }
+
+        const channelIndex = channelsData.findIndex(c => (c.id || `channel-${channelsData.indexOf(c)}`) === channelId);
+        if (channelIndex === -1) {
+            showGenericModal("Erro", "Canal não encontrado.");
+            return;
+        }
+
+        if (!channelsData[channelIndex].prompts) {
+            channelsData[channelIndex].prompts = [];
+        }
+
+        if (editingPromptIndex !== null && channelsData[channelIndex].prompts[editingPromptIndex]) {
+            // Editando prompt existente
+            channelsData[channelIndex].prompts[editingPromptIndex] = { name: promptName, text: promptText };
+        } else {
+            // Adicionando novo prompt
+            channelsData[channelIndex].prompts.push({ name: promptName, text: promptText });
+        }
+
+        await saveAllUserData();
+        // renderChannels() será chamado pelo listener onSnapshot
+        closePromptModal();
+    }
+    
+    window.confirmDeletePrompt = (channelId, promptIndex) => {
+        showGenericModal(
+            "Confirmar Exclusão",
+            "Tem certeza que deseja excluir este prompt?",
+            "confirm",
+            async () => {
+                const channelIndex = channelsData.findIndex(c => (c.id || `channel-${channelsData.indexOf(c)}`) === channelId);
+                if (channelIndex > -1 && channelsData[channelIndex].prompts && channelsData[channelIndex].prompts[promptIndex]) {
+                    channelsData[channelIndex].prompts.splice(promptIndex, 1);
+                    await saveAllUserData();
+                    // renderChannels() será chamado pelo listener onSnapshot
+                    showGenericModal("Prompt Excluído", "O prompt foi excluído com sucesso.");
+                } else {
+                    showGenericModal("Erro", "Prompt ou canal não encontrado para exclusão.");
+                }
+            }
+        );
+    }
+
+    // Funções do Modal Visualizar/Copiar Prompt
+    const viewPromptModal = document.getElementById('viewPromptModal');
+    const viewPromptName = document.getElementById('viewPromptName');
+    const viewPromptText = document.getElementById('viewPromptText');
+    let currentPromptToCopy = '';
+
+    window.openViewPromptModal = (channelId, promptIndex) => {
+        const channel = channelsData.find(c => (c.id || `channel-${channelsData.indexOf(c)}`) === channelId);
+        if (channel && channel.prompts && channel.prompts[promptIndex]) {
+            const prompt = channel.prompts[promptIndex];
+            viewPromptName.textContent = prompt.name;
+            viewPromptText.textContent = prompt.text;
+            currentPromptToCopy = prompt.text;
+            viewPromptModal.style.display = 'flex';
+        } else {
+            showGenericModal("Erro", "Prompt não encontrado para visualização.");
+        }
+    }
+    window.closeViewPromptModal = () => {
+        viewPromptModal.style.display = 'none';
+        currentPromptToCopy = '';
+    }
+    window.copyPromptText = () => {
+        if (currentPromptToCopy) {
+            // Técnica para copiar para clipboard
+            const textarea = document.createElement('textarea');
+            textarea.value = currentPromptToCopy;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy'); // Usar execCommand por causa das restrições do iframe
+                showGenericModal("Copiado!", "O texto do prompt foi copiado para a área de transferência.", "alert");
+            } catch (err) {
+                showGenericModal("Erro ao Copiar", "Não foi possível copiar o texto automaticamente. Você pode selecioná-lo manualmente.", "alert");
+                console.error('Falha ao copiar texto: ', err);
+            }
+            document.body.removeChild(textarea);
+            closeViewPromptModal(); // Fecha o modal após copiar
+        }
+    }
+
+    // Inicialização da Autenticação (deve ser a última coisa no script type="module")
+    (async () => {
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                console.log("Tentando login com token customizado...");
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else if (auth.currentUser) {
+                // Usuário já pode estar logado de uma sessão anterior se a persistência estiver ativa
+                console.log("Usuário já logado:", auth.currentUser.uid);
+                // onAuthStateChanged vai lidar com isso
+            }
+            else {
+                console.log("Nenhum token customizado, abrindo modal de login/registro.");
+                // Se não houver token e nenhum usuário logado, onAuthStateChanged(auth, user => { if (!user) openAuthModal() }) tratará disso
+                openAuthModal(); // Força abertura se não houver usuário na carga inicial e nenhum token
+            }
+        } catch (error) {
+            console.error("Erro na autenticação inicial:", error);
+            showGenericModal("Erro de Autenticação", `Falha na autenticação inicial: ${error.message}`);
+            openAuthModal(); // Garante que o modal de login apareça em caso de erro com token
+        }
+    })();
+
   </script>
 </body>
 </html>
+
